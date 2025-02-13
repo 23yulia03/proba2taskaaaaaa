@@ -98,6 +98,7 @@ public class HelloController {
         if (isSelectionMode && event.isSecondaryButtonDown()) { // Завершаем выделение области
             isDrawing = false;
             selectShapesInArea(); // Выбираем фигуры в выделенной области
+            redrawCanvas(); // Перерисовываем холст, чтобы убрать прямоугольник выделения
         } else {
             isDrawing = false;
             currentShape = null;
@@ -146,7 +147,49 @@ public class HelloController {
                     shape.setPosition(shape.getX() + deltaX, shape.getY() + deltaY);
                 }
                 redrawCanvas();
-                drawSelectedShapesOutline(); // Обводим выбранные фигуры
+            }
+        }
+    }
+
+    // Метод для выделения фигур в области
+    private void selectShapesInArea() {
+        selectedShapes.clear();
+        double minX = Math.min(startX, endX);
+        double maxX = Math.max(startX, endX);
+        double minY = Math.min(startY, endY);
+        double maxY = Math.max(startY, endY);
+
+        for (Shape shape : shapes) {
+            if (shape.getX() >= minX && shape.getX() <= maxX &&
+                    shape.getY() >= minY && shape.getY() <= maxY) {
+                selectedShapes.add(shape);
+            }
+        }
+    }
+
+    // Рисуем прямоугольник выделения
+    private void drawSelectionRectangle() {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.setStroke(Color.BLUE);
+        gc.setLineWidth(1);
+        gc.strokeRect(Math.min(startX, endX), Math.min(startY, endY), Math.abs(endX - startX), Math.abs(endY - startY));
+    }
+
+    // Перерисовываем холст
+    private void redrawCanvas() {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+
+        // Рисуем все фигуры
+        for (Shape shape : shapes) {
+            if (selectedShapes.contains(shape)) {
+                // Если фигура выделена, рисуем её с выделением
+                gc.setFill(Color.BLUE); // Изменяем цвет выделения
+                shape.draw(gc);
+            } else {
+                // Иначе рисуем фигуру обычным цветом
+                gc.setFill(shape.getColor());
+                shape.draw(gc);
             }
         }
     }
@@ -176,65 +219,6 @@ public class HelloController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
-    }
-
-    // Метод для выделения фигур в области
-    private void selectShapesInArea() {
-        selectedShapes.clear();
-        double minX = Math.min(startX, endX);
-        double maxX = Math.max(startX, endX);
-        double minY = Math.min(startY, endY);
-        double maxY = Math.max(startY, endY);
-
-        for (Shape shape : shapes) {
-            if (shape.getX() >= minX && shape.getX() <= maxX && shape.getY() >= minY && shape.getY() <= maxY) {
-                selectedShapes.add(shape);
-            }
-        }
-
-        redrawCanvas();
-        drawSelectedShapesOutline(); // Рисуем контуры выбранных фигур
-    }
-
-    // Рисуем прямоугольник выделения
-    private void drawSelectionRectangle() {
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.setStroke(Color.BLUE);
-        gc.setLineWidth(1);
-        gc.strokeRect(Math.min(startX, endX), Math.min(startY, endY), Math.abs(endX - startX), Math.abs(endY - startY));
-    }
-
-    // Обводим выбранные фигуры
-    private void drawSelectedShapesOutline() {
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.setStroke(Color.BLUE);
-        gc.setLineWidth(2);
-        for (Shape shape : selectedShapes) {
-            if (shape instanceof Square) {
-                Square square = (Square) shape;
-                gc.strokeRect(square.getX(), square.getY(), square.getSize(), square.getSize());
-            } else if (shape instanceof Circle) {
-                Circle circle = (Circle) shape;
-                gc.strokeOval(circle.getX(), circle.getY(), circle.getRadius() * 2, circle.getRadius() * 2);
-            } else if (shape instanceof Triangle) {
-                Triangle triangle = (Triangle) shape;
-                gc.strokePolygon(
-                        new double[]{triangle.getX() - triangle.getBase() / 2, triangle.getX(), triangle.getX() + triangle.getBase() / 2},
-                        new double[]{triangle.getY() + triangle.getHeight(), triangle.getY(), triangle.getY() + triangle.getHeight()},
-                        3
-                );
-            }
-            // Добавьте другие типы фигур по аналогии
-        }
-    }
-
-    // Перерисовываем холст с учетом удаленных фигур
-    private void redrawCanvas() {
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-        for (Shape shape : shapes) {
-            shape.draw(gc);
-        }
     }
 
     public void onUndo(ActionEvent actionEvent) {
