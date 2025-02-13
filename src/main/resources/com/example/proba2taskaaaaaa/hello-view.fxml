@@ -23,20 +23,17 @@
         </items>
     </ListView>
 
-    <!-- Выбор цвета -->
     <ColorPicker fx:id="colorPicker" layoutX="470.0" layoutY="40.0" />
 
-    <!-- Ввод размера -->
     <TextField fx:id="sizeInput" layoutX="20.0" layoutY="150.0" prefHeight="26.0" prefWidth="158.0" promptText="Введите размер фигуры" />
 
-    <!-- Кнопки управления -->
     <Button layoutX="20.0" layoutY="186.0" onAction="#onClear" text="Очистить" />
+
     <Button layoutX="100.0" layoutY="186.0" onAction="#onUndo" text="Отменить" />
-    <Button layoutX="180.0" layoutY="186.0" onAction="#toggleSelectionMode" text="Переключить режим" /> <!-- Новая кнопка -->
 
-    <!-- Label для отображения текущего режима -->
-    <Label fx:id="modeLabel" layoutX="335.0" layoutY="190.0" text="Режим: Рисование" />
+    <Button layoutX="200.0" layoutY="186.0" onAction="#onSelectMode" text="Выделить" />
+    <Button layoutX="280.0" layoutY="186.0" onAction="#onDrawMode" text="Рисовать" />
+    <Button layoutX="360.0" layoutY="186.0" onAction="#onChangeColor" text="Изменить цвет" />
 
-    <!-- Холст для рисования -->
     <Canvas fx:id="canvas" height="400" layoutX="20.0" layoutY="222.0" onMouseDragged="#onMouseDragged" onMousePressed="#onMousePressed" onMouseReleased="#onMouseReleased" width="600" />
 </AnchorPane>

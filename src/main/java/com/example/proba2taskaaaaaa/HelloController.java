@@ -1,7 +1,6 @@
 package com.example.proba2taskaaaaaa;
 
 import javafx.collections.FXCollections;
-import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -11,9 +10,14 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
-import javafx.scene.control.Label;
+import javafx.scene.shape.Rectangle;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.Stack;
 
 public class HelloController {
     @FXML
@@ -24,32 +28,22 @@ public class HelloController {
     private TextField sizeInput;
     @FXML
     private ColorPicker colorPicker;
-    @FXML
-    private Label modeLabel; // Label для отображения текущего режима
 
     private ShapeFactory shapeFactory = new ShapeFactory();
     private ArrayList<Shape> shapes = new ArrayList<>();
-    private Stack<Shape> undoStack = new Stack<>();
-    private Queue<Shape> shapeQueue = new LinkedList<>();
-    private Map<String, Integer> shapeCountMap = new HashMap<>();
+    private Stack<UndoAction> undoStack = new Stack<>(); // Стек для Undo действий
 
     private boolean isDrawing = false;
+    private boolean isSelecting = false; // флаг для выделения
     private Shape currentShape = null;
-
-    // Для выделения и перетаскивания
-    private double startX, startY; // Начальные координаты выделения
-    private double endX, endY; // Конечные координаты выделения
-    private ArrayList<Shape> selectedShapes = new ArrayList<>(); // Список выбранных фигур
-    private double offsetX, offsetY; // Смещение для перетаскивания
-
-    private boolean isSelectionMode = false; // Флаг для режима выделения
+    private Rectangle selectionRect = null; // прямоугольник выделения
+    private Set<Shape> selectedShapes = new HashSet<>(); // выделенные фигуры
 
     // Инициализация ListView
     public void initialize() {
         shapeListView.setItems(FXCollections.observableArrayList(
                 "Линия", "Квадрат", "Треугольник", "Круг", "Угол", "Пятиугольник"
         ));
-        modeLabel.setText("Режим: Рисование"); // Начальный режим
     }
 
     // Метод для очистки холста
@@ -58,161 +52,30 @@ public class HelloController {
         gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
         shapes.clear();
         undoStack.clear();
-        shapeQueue.clear();
-        shapeCountMap.clear();
         selectedShapes.clear();
     }
 
-    // Переключение режима
-    public void toggleSelectionMode(ActionEvent actionEvent) {
-        isSelectionMode = !isSelectionMode; // Переключаем режим
-        if (isSelectionMode) {
-            modeLabel.setText("Режим: Выделение");
-        } else {
-            modeLabel.setText("Режим: Рисование");
-        }
-    }
-
-    // Обработчик для нажатия мыши
-    @FXML
-    private void onMousePressed(MouseEvent event) {
-        if (isSelectionMode && event.isSecondaryButtonDown()) { // Выделение области правой кнопкой мыши
-            startX = event.getX();
-            startY = event.getY();
-            endX = startX;
-            endY = startY;
-            isDrawing = true;
-        } else if (!isSelectionMode && event.isPrimaryButtonDown()) { // Рисование фигур левой кнопкой
-            isDrawing = true;
-            onMouseDragged(event);
-        } else if (event.isPrimaryButtonDown() && !selectedShapes.isEmpty()) { // Перетаскивание фигур левой кнопкой
-            offsetX = event.getX();
-            offsetY = event.getY();
-            isDrawing = true;
-        }
-    }
-
-    // Обработчик для отпускания мыши
-    @FXML
-    private void onMouseReleased(MouseEvent event) {
-        if (isSelectionMode && event.isSecondaryButtonDown()) { // Завершаем выделение области
-            isDrawing = false;
-            selectShapesInArea(); // Выбираем фигуры в выделенной области
-            redrawCanvas(); // Перерисовываем холст, чтобы убрать прямоугольник выделения
-        } else {
-            isDrawing = false;
-            currentShape = null;
-        }
-    }
-
-    // Обработчик для движения мыши при зажатой кнопке
-    @FXML
-    private void onMouseDragged(MouseEvent event) {
-        if (isDrawing) {
-            if (isSelectionMode && event.isSecondaryButtonDown()) { // Продолжаем выделение области
-                endX = event.getX();
-                endY = event.getY();
-                redrawCanvas(); // Перерисовываем холст
-                drawSelectionRectangle(); // Рисуем прямоугольник выделения
-            } else if (!isSelectionMode && event.isPrimaryButtonDown()) { // Рисование новой фигуры
-                String shapeName = shapeListView.getSelectionModel().getSelectedItem();
-                Color color = colorPicker.getValue();
-                double size = Double.parseDouble(sizeInput.getText());
-                GraphicsContext gc = canvas.getGraphicsContext2D();
-
-                if (currentShape == null) {
-                    currentShape = createShapeByName(shapeName, color, size);
-                }
-
-                if (currentShape != null) {
-                    currentShape.setPosition(event.getX(), event.getY());
-                    currentShape.draw(gc);
-                    shapes.add(currentShape);
-                    undoStack.push(currentShape);
-                    shapeQueue.add(currentShape);
-                    shapeCountMap.put(shapeName, shapeCountMap.getOrDefault(shapeName, 0) + 1);
-                    currentShape = createShapeByName(shapeName, color, size);
-                } else {
-                    showAlert("Ошибка", "Неверное название фигуры.");
-                }
-            } else if (event.isPrimaryButtonDown() && !selectedShapes.isEmpty()) { // Перетаскивание выбранных фигур
-                double newX = event.getX();
-                double newY = event.getY();
-                double deltaX = newX - offsetX;
-                double deltaY = newY - offsetY;
-                offsetX = newX;
-                offsetY = newY;
-
-                for (Shape shape : selectedShapes) {
-                    shape.setPosition(shape.getX() + deltaX, shape.getY() + deltaY);
-                }
-                redrawCanvas();
-            }
-        }
-    }
-
-    // Метод для выделения фигур в области
-    private void selectShapesInArea() {
-        selectedShapes.clear();
-        double minX = Math.min(startX, endX);
-        double maxX = Math.max(startX, endX);
-        double minY = Math.min(startY, endY);
-        double maxY = Math.max(startY, endY);
-
-        for (Shape shape : shapes) {
-            if (shape.getX() >= minX && shape.getX() <= maxX &&
-                    shape.getY() >= minY && shape.getY() <= maxY) {
-                selectedShapes.add(shape);
-            }
-        }
-    }
-
-    // Рисуем прямоугольник выделения
-    private void drawSelectionRectangle() {
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.setStroke(Color.BLUE);
-        gc.setLineWidth(1);
-        gc.strokeRect(Math.min(startX, endX), Math.min(startY, endY), Math.abs(endX - startX), Math.abs(endY - startY));
-    }
-
-    // Перерисовываем холст
-    private void redrawCanvas() {
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
-
-        // Рисуем все фигуры
-        for (Shape shape : shapes) {
-            if (selectedShapes.contains(shape)) {
-                // Если фигура выделена, рисуем её с выделением
-                gc.setFill(Color.BLUE); // Изменяем цвет выделения
-                shape.draw(gc);
-            } else {
-                // Иначе рисуем фигуру обычным цветом
-                gc.setFill(shape.getColor());
-                shape.draw(gc);
-            }
-        }
-    }
-
+    // Создаёт фигуру на основе выбранного названия
     private Shape createShapeByName(String shapeName, Color color, double size) {
         switch (shapeName) {
-            case "Квадрат":
-                return new Square(color, size);
-            case "Круг":
-                return new Circle(color, size);
-            case "Треугольник":
-                return new Triangle(color, size, size);
             case "Линия":
-                return new Line(color, size);
+                return shapeFactory.createShape("Line", color, size);
+            case "Квадрат":
+                return shapeFactory.createShape("Square", color, size);
+            case "Треугольник":
+                return shapeFactory.createShape("Triangle", color, size, size);
+            case "Круг":
+                return shapeFactory.createShape("Circle", color, size);
             case "Угол":
-                return new Angle(color, size);
+                return shapeFactory.createShape("Angle", color, size);
             case "Пятиугольник":
-                return new Pentagon(color, size);
+                return shapeFactory.createShape("Pentagon", color, size);
             default:
                 return null;
         }
     }
 
+    // Показывает уведомление об ошибке
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
@@ -221,12 +84,181 @@ public class HelloController {
         alert.showAndWait();
     }
 
-    public void onUndo(ActionEvent actionEvent) {
-        if (!undoStack.isEmpty()) {
-            Shape lastShape = undoStack.pop();
-            shapes.remove(lastShape);
-            shapeQueue.remove(lastShape);
+    // Обработчик для нажатия мыши
+    @FXML
+    private void onMousePressed(MouseEvent event) {
+        if (isSelecting) {
+            // Начинаем выделение
+            selectionRect = new Rectangle(event.getX(), event.getY(), 0, 0);
+        } else {
+            isDrawing = true;
+            onMouseDragged(event);
+        }
+    }
+
+    // Обработчик для отпускания мыши
+    @FXML
+    private void onMouseReleased(MouseEvent event) {
+        if (isSelecting) {
+            // Завершаем выделение
+            double x = selectionRect.getX();
+            double y = selectionRect.getY();
+            double width = selectionRect.getWidth();
+            double height = selectionRect.getHeight();
+
+            // Отмечаем фигуры, которые попадают в выделенную область
+            selectedShapes.clear();
+            for (Shape shape : shapes) {
+                if (shape.x >= x && shape.x <= x + width && shape.y >= y && shape.y <= y + height) {
+                    selectedShapes.add(shape);
+                }
+            }
+        } else {
+            isDrawing = false;
+            currentShape = null;
+        }
+    }
+
+    // Обработчик для движения мыши при зажатой клавише
+    @FXML
+    private void onMouseDragged(MouseEvent event) {
+        if (isDrawing) {
+            String shapeName = shapeListView.getSelectionModel().getSelectedItem(); // Получаем выбранное название фигуры
+            Color color = colorPicker.getValue(); // Получаем цвет
+            double size = Double.parseDouble(sizeInput.getText()); // Получаем размер фигуры
+            GraphicsContext gc = canvas.getGraphicsContext2D();
+
+            if (currentShape == null) {
+                currentShape = createShapeByName(shapeName, color, size);
+            }
+
+            if (currentShape != null) {
+                // Устанавливаем позицию фигуры на место курсора
+                currentShape.setPosition(event.getX(), event.getY());
+                currentShape.draw(gc);
+
+                // Добавляем фигуру в список и стек для отмены
+                shapes.add(currentShape);
+                undoStack.push(new UndoAction(currentShape, UndoAction.Type.ADD)); // Сохраняем действие добавления фигуры
+
+                // Создаем новую фигуру для следующего рисования
+                currentShape = createShapeByName(shapeName, color, size);
+            } else {
+                showAlert("Ошибка", "Неверное название фигуры.");
+            }
+        } else if (isSelecting && selectionRect != null) {
+            // Рисуем прямоугольник выделения
+            double x = Math.min(event.getX(), selectionRect.getX());
+            double y = Math.min(event.getY(), selectionRect.getY());
+            double width = Math.abs(event.getX() - selectionRect.getX());
+            double height = Math.abs(event.getY() - selectionRect.getY());
+
+            selectionRect.setX(x);
+            selectionRect.setY(y);
+            selectionRect.setWidth(width);
+            selectionRect.setHeight(height);
+
+            // Перерисовываем холст с выделением
             redrawCanvas();
+            GraphicsContext gc = canvas.getGraphicsContext2D();
+            gc.setStroke(Color.BLACK);
+            gc.strokeRect(x, y, width, height);
+        }
+    }
+
+    // Метод для отмены последнего действия
+    public void onUndo() {
+        if (!undoStack.isEmpty()) {
+            UndoAction lastAction = undoStack.pop();
+
+            if (lastAction.getType() == UndoAction.Type.ADD) {
+                // Если действие было добавлением фигуры, удаляем её
+                shapes.remove(lastAction.getShape());
+            } else if (lastAction.getType() == UndoAction.Type.COLOR_CHANGE) {
+                // Если действие было изменением цвета, восстанавливаем старый цвет для всех фигур
+                Map<Shape, Color> oldColors = lastAction.getOldColors();
+                for (Map.Entry<Shape, Color> entry : oldColors.entrySet()) {
+                    entry.getKey().setColor(entry.getValue());
+                }
+            }
+
+            redrawCanvas();
+        }
+    }
+
+    // Перерисовываем холст с учетом удаленных фигур
+    private void redrawCanvas() {
+        GraphicsContext gc = canvas.getGraphicsContext2D();
+        gc.clearRect(0, 0, canvas.getWidth(), canvas.getHeight());
+        for (Shape shape : shapes) {
+            shape.draw(gc);
+        }
+    }
+
+    // Включение режима выделения
+    @FXML
+    private void onSelectMode() {
+        isSelecting = true;
+    }
+
+    // Включение режима рисования
+    @FXML
+    private void onDrawMode() {
+        isSelecting = false;
+    }
+
+    // Изменение цвета выбранных фигур
+    @FXML
+    private void onChangeColor() {
+        Color newColor = colorPicker.getValue();
+
+        // Создаем список для хранения старых цветов и фигур
+        Map<Shape, Color> oldColors = new HashMap<>();
+
+        // Для каждой выделенной фигуры сохраняем старый цвет и изменяем на новый
+        for (Shape shape : selectedShapes) {
+            oldColors.put(shape, shape.getColor()); // Сохраняем старый цвет
+            shape.setColor(newColor); // Устанавливаем новый цвет
+        }
+
+        // Добавляем действие изменения цвета в стек отмены
+        if (!oldColors.isEmpty()) {
+            undoStack.push(new UndoAction(oldColors, UndoAction.Type.COLOR_CHANGE));
+        }
+
+        redrawCanvas(); // Обновляем холст с новым цветом
+    }
+
+    // Вспомогательный класс для действия Undo
+    private static class UndoAction {
+        enum Type {ADD, COLOR_CHANGE}
+
+        private Shape shape; // Для действий с одной фигурой (например, добавление)
+        private Map<Shape, Color> oldColors; // Для действий с несколькими фигурами (например, изменение цвета)
+        private Type type;
+
+        public UndoAction(Shape shape, Type type) {
+            this.shape = shape;
+            this.type = type;
+            this.oldColors = null;
+        }
+
+        public UndoAction(Map<Shape, Color> oldColors, Type type) {
+            this.shape = null;
+            this.type = type;
+            this.oldColors = oldColors;
+        }
+
+        public Shape getShape() {
+            return shape;
+        }
+
+        public Map<Shape, Color> getOldColors() {
+            return oldColors;
+        }
+
+        public Type getType() {
+            return type;
         }
     }
 }
