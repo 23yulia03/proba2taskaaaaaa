@@ -4,9 +4,9 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.canvas.*?>
 <?import javafx.scene.paint.*?>
-
 <?import javafx.collections.FXCollections?>
 <?import java.lang.String?>
+
 <AnchorPane xmlns="http://javafx.com/javafx/17.0.2-ea" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.proba2taskaaaaaa.HelloController">
     <Label layoutX="20" layoutY="10" text="Доступные фигуры:" />
 
@@ -33,6 +33,10 @@
     <!-- Кнопки управления -->
     <Button layoutX="20.0" layoutY="186.0" onAction="#onClear" text="Очистить" />
     <Button layoutX="100.0" layoutY="186.0" onAction="#onUndo" text="Отменить" />
+    <Button layoutX="180.0" layoutY="186.0" onAction="#toggleSelectionMode" text="Переключить режим" /> <!-- Новая кнопка -->
+
+    <!-- Label для отображения текущего режима -->
+    <Label fx:id="modeLabel" layoutX="300.0" layoutY="190.0" text="Режим: Рисование" />
 
     <!-- Холст для рисования -->
     <Canvas fx:id="canvas" height="400" layoutX="20.0" layoutY="222.0" onMouseDragged="#onMouseDragged" onMousePressed="#onMousePressed" onMouseReleased="#onMouseReleased" width="600" />
